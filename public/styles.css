@@ -1,0 +1,2024 @@
+/* Стендовый прибор: анодированный графит, DIN на подписях, моноширинный на данных.
+   Разделение — волосяной линией и выравниванием, не коробками. */
+
+/* Контраст проверен по WCAG: все текстовые ярусы держат 4.5:1 на своих подложках.
+   Синий — выбор и активное, зелёный — работает, красный — сбой. */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bench: #0f1216;
+  --panel: #161a1f;
+  --panel-2: #1c2128;
+  --raised: #222831;
+  --inset: #0b0e12;
+  --rail: #2f3945;
+  --rail-soft: #242c36;
+  --ink: #e6eaee;
+  --ink-dim: #9aa4ae;
+  --ink-faint: #7d8794;
+  --signal: #58a6ff;
+  --signal-lit: #79b8ff;
+  --signal-ink: #0b1017;
+  --signal-wash: rgba(88, 166, 255, 0.14);
+  --alert: #ff6b62;
+  --alert-wash: rgba(255, 107, 98, 0.13);
+  --live: #4ac26b;
+  --live-wash: rgba(74, 194, 107, 0.13);
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bench: #eaedf1;
+  --panel: #ffffff;
+  --panel-2: #f3f5f8;
+  --raised: #eef1f5;
+  --inset: #f4f6f9;
+  --rail: #d3d8de;
+  --rail-soft: #e3e7ec;
+  --ink: #1b1f24;
+  --ink-dim: #57606a;
+  --ink-faint: #6e7781;
+  --signal: #0969da;
+  --signal-lit: #0550ae;
+  --signal-ink: #ffffff;
+  --signal-wash: rgba(9, 105, 218, 0.1);
+  --alert: #cf222e;
+  --alert-wash: rgba(207, 34, 46, 0.09);
+  --live: #1a7f37;
+  --live-wash: rgba(26, 127, 55, 0.1);
+  --shadow: 0 16px 40px rgba(27, 31, 36, 0.18);
+}
+
+/* Палитра VS Code (Dark+): нейтральный серый вместо синеватого графита,
+   и его же акцентный синий. Комментарии — имена токенов темы VS Code,
+   чтобы было видно, откуда взят цвет.
+   Контраст держит тот же уровень: на --bench ink 10.4:1, ink-dim 6.2:1,
+   ink-faint 5.0:1; худшая пара — ink-faint на --panel, 4.55:1. */
+[data-theme='vscode'] {
+  color-scheme: dark;
+  --bench: #1e1e1e;      /* editor.background */
+  --panel: #252526;      /* sideBar.background */
+  --panel-2: #2d2d30;    /* tab.inactiveBackground */
+  --raised: #37373d;     /* list.hoverBackground */
+  --inset: #181818;      /* поля и лог — глубже фона, как жёлоб редактора */
+  --rail: #3e3e42;       /* panel.border */
+  --rail-soft: #2d2d30;
+  --ink: #cccccc;        /* editor.foreground */
+  --ink-dim: #9d9d9d;    /* descriptionForeground */
+  --ink-faint: #8c8c8c;
+  --signal: #4daafc;     /* textLink.foreground */
+  --signal-lit: #6fbcff;
+  --signal-ink: #10212e;
+  --signal-wash: rgba(77, 170, 252, 0.15);
+  /* Не editorError (#f14c4c): тот даёт лишь 4.29:1 на --panel. */
+  --alert: #f48771;      /* list.errorForeground */
+  --alert-wash: rgba(244, 135, 113, 0.14);
+  --live: #89d185;       /* charts.green */
+  --live-wash: rgba(137, 209, 133, 0.14);
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+
+:root {
+  /* Шрифт интерфейса и его ширина — переключаются в настройках ([data-font]
+     ниже). Bahnschrift — это DIN от Microsoft; он переменной ширины, поэтому
+     font-stretch на нём реально работает. */
+  --ui-font: Bahnschrift, "DIN Next", "Segoe UI", system-ui, sans-serif;
+  --ui-stretch: 100%;
+  --ui-stretch-title: 100%;
+  /* Данные — порты, hex, тела RX и TX, лог — всегда моноширинным. */
+  --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  --h-ctl: 28px;
+  --header-h: 60px;
+  /* Высота полосы заголовка окна; должна совпадать с TITLEBAR_H в main.js */
+  --titlebar-h: 34px;
+  /* Сколько занято сверху: в браузере и при штатной шапке — только заголовок */
+  --chrome-h: var(--header-h);
+  --gutter: 14px;
+  /* Минимальная ширина рабочего экрана проекта: 250 (устройства) + 280 (центр)
+     + 440 (обмен) + два волоска сплиттеров. Уже — не сужаем колонки и не
+     переносим их друг под друга, а отдаём горизонтальную прокрутку. */
+  --layout-min: 980px;
+}
+
+/* Шрифты интерфейса. Стек всегда из системных: приложение работает офлайн,
+   веб-шрифты подключать нельзя. В :root выше лежит вариант по умолчанию —
+   DIN обычной ширины; поэтому незнакомое или вовсе отсутствующее имя
+   откатывается именно к нему, а не к какому-то третьему виду.
+   Эти правила обязаны идти после :root — специфичность у них одинаковая,
+   и решает порядок в файле. */
+
+/* Поджатый DIN — таким приложение было изначально. */
+[data-font='din'] {
+  --ui-stretch: 90%;
+  --ui-stretch-title: 87.5%;
+}
+
+/* Как в VS Code на Windows: там интерфейс набран Segoe UI.
+   Ширину не задаём — у Segoe UI нет оси ширины, сжимать нечего. */
+[data-font='segoe'] {
+  --ui-font: "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rail) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--rail);
+  background-clip: content-box;
+  border: 4px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+  background-clip: content-box;
+  border: 4px solid transparent;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bench);
+  color: var(--ink);
+  font-family: var(--ui-font);
+  font-size: 14px;
+  font-stretch: var(--ui-stretch);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--signal);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--signal-lit);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 1px;
+}
+
+/* ── Шапка стенда ────────────────────────────────────── */
+
+/* Полоса заголовка окна. Своя, а не системная, — только ради того,
+   чтобы цвет был ровно фоновым; кнопки окна Windows рисует справа сама. */
+.titlebar {
+  display: none;
+}
+
+[data-titlebar='custom'] {
+  --chrome-h: calc(var(--titlebar-h) + var(--header-h));
+}
+
+[data-titlebar='custom'] .titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--titlebar-h);
+  padding-left: var(--gutter);
+  /* Место под кнопки окна: их ширину отдаёт env(titlebar-area-width) */
+  padding-right: calc(100vw - env(titlebar-area-width, 100vw) + var(--gutter));
+  background: var(--bench);
+  color: var(--ink-dim);
+  font-size: 12px;
+  user-select: none;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* Со спрятанной системной полосой рамку окна на тёмном фоне почти не видно,
+   поэтому обводим содержимое сами — как это делает обычное окно Windows. */
+[data-titlebar='custom'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--rail);
+}
+
+.titlebar-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.titlebar-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: var(--header-h);
+  padding: 8px var(--gutter);
+  border-bottom: 1px solid var(--rail);
+}
+
+.app-header-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+}
+
+.app-header .hint {
+  margin: 1px 0 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn-back {
+  flex: none;
+  color: var(--ink-dim);
+}
+
+.btn-back:hover {
+  color: var(--ink);
+}
+
+.btn-ico {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 720px;
+  padding: 22px var(--gutter);
+}
+
+.page-left {
+  margin: 0;
+  max-width: 620px;
+}
+
+/* Список проектов слева, справочник по сети прижат к правому краю окна:
+   между ними свободное место, а не фиксированный отступ. Ширины подобраны
+   так, чтобы обе колонки помещались при минимальной ширине окна
+   (minWidth в main.js): 620 + 320 оставляют запас даже там. */
+.page-split {
+  display: grid;
+  grid-template-columns: minmax(280px, 620px) 320px;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+  /* шире, чем .page — иначе прижимать было бы не к чему */
+  max-width: none;
+  /* Ровно высота окна: страница целиком не прокручивается, список проектов
+     скроллится внутри себя — как панели на рабочем экране. Иначе при десятке
+     проектов уезжали и шапка, и справочник по сети. */
+  height: calc(100vh - var(--chrome-h));
+  overflow: hidden;
+}
+
+/* Левая колонка: вкладки сверху, список под ними. Колонка тянется на всю
+   высоту, а прокручивается только список — вкладки остаются на месте.
+   min-height: 0 обязателен и тут, и у списка: без него элемент не даёт себя
+   сжать до появления скролла. */
+.page-split .projects-col {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.page-split #projectList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* место под полосу прокрутки держим всегда, чтобы карточки не дёргались,
+     когда проектов становится больше или меньше */
+  scrollbar-gutter: stable;
+}
+
+/* В окне приложения до этого не доходит — там свой нижний предел ширины.
+   Это для браузера на узком экране: колонки встают друг под друга, и тогда
+   прокручивать страницу целиком — единственный разумный вариант. */
+@media (max-width: 900px) {
+  .page-split {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    overflow: visible;
+  }
+
+  .page-split #projectList {
+    overflow-y: visible;
+  }
+}
+
+/* Текущие / Архив. Вкладки — подписи на волосяной линии, а не коробки:
+   выбранную отличает только синяя черта снизу. */
+.project-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex: none;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--rail);
+}
+
+/* Поиск в той же строке, прижат вправо и стоит над волосяной линией,
+   как подписи вкладок. Ищет в открытой вкладке. */
+.project-search {
+  flex: 0 1 220px;
+  margin-left: auto;
+  margin-bottom: 5px;
+}
+
+.project-search .device-filter {
+  padding-left: 26px;
+}
+
+.project-search-ico {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  width: 13px;
+  height: 13px;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+/* «В архиве 2 совпадения» под пустым результатом — переход одним щелчком. */
+.link-btn {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--signal);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  color: var(--signal-lit);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.project-tab {
+  appearance: none;
+  margin-bottom: -1px;
+  padding: 0 0 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  cursor: pointer;
+}
+
+.project-tab:hover {
+  color: var(--ink);
+}
+
+.project-tab.active {
+  border-bottom-color: var(--signal);
+  color: var(--ink);
+}
+
+/* Счётчик — тем же ярусом, что неактивная подпись: ink-faint в светлой теме
+   на фоне не держит 4.5:1. */
+.tab-count {
+  margin-left: 3px;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Справочник по сети высоту не тянет: он короткий и должен остаться наверху. */
+.side-panel {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--rail);
+  background: var(--panel);
+}
+
+.side-panel .section-note {
+  margin: 0;
+}
+
+/* ── Адреса компьютера ───────────────────────────────── */
+
+.net-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Строка-кнопка: весь адрес целиком — цель для клика, копировать по символу
+   никто не должен. */
+.net-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-top: 1px solid var(--rail-soft);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.net-row:first-child {
+  border-top: 0;
+}
+
+.net-row:hover {
+  background: var(--panel-2);
+}
+
+.net-addr {
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.net-iface {
+  grid-column: 1;
+  color: var(--ink-dim);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Виртуальные адаптеры гасим: они почти всегда не тот адрес, который нужен. */
+.net-row-virtual .net-addr,
+.net-row-virtual .net-iface {
+  color: var(--ink-faint);
+}
+
+.net-row-reached .net-addr {
+  color: var(--live);
+}
+
+.net-tag {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.net-tag-live {
+  color: var(--live);
+}
+
+.net-note-flash {
+  color: var(--live);
+}
+
+/* ── Общие раскладки ─────────────────────────────────── */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.form-grid .span-2 {
+  grid-column: 1 / -1;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.form-row .grow {
+  flex: 1;
+}
+
+.row-gap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Плитки тем раскладываются сами: их число меняется при добавлении палитры. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.empty {
+  color: var(--ink-dim);
+  margin: 40px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.muted {
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+
+code.chip {
+  background: var(--raised);
+  padding: 1px 5px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* ── Органы управления ───────────────────────────────── */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: var(--h-ctl);
+  padding: 0 11px;
+  border: 1px solid var(--rail);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  font-stretch: var(--ui-stretch);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.08s linear, border-color 0.08s linear, color 0.08s linear;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--ink-faint);
+  background: var(--panel-2);
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: var(--signal);
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  border-color: var(--signal-lit);
+  background: var(--signal-lit);
+  color: var(--signal-ink);
+}
+
+.btn.active {
+  border-color: var(--signal);
+  background: var(--signal-wash);
+  color: var(--signal);
+}
+
+.btn-danger,
+.btn-run-on {
+  border-color: var(--alert);
+  background: var(--alert-wash);
+  color: var(--alert);
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-run-on:hover:not(:disabled) {
+  background: var(--alert-wash);
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.btn-run-off {
+  border-color: var(--live);
+  background: var(--live-wash);
+  color: var(--live);
+}
+
+.btn-run-off:hover:not(:disabled) {
+  background: var(--live-wash);
+  border-color: var(--live);
+  color: var(--live);
+}
+
+.btn-icon {
+  width: var(--h-ctl);
+  padding: 0;
+}
+
+.btn-add {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.btn-add:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+/* Тумблер: кнопка с ходом, а не «пилюля» */
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 26px;
+  height: 16px;
+}
+
+/* Прозрачный чекбокс накрывает весь выключатель — он и цель клика, и курсор.
+   Селектор с [type='checkbox'] намеренно: общее правило для чекбоксов ниже
+   по файлу весит столько же, как .switch input, и побеждало бы порядком —
+   чекбокс сжимался до 14×14 в углу, и «пальчик» был лишь над его частью. */
+.switch input[type='checkbox'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.switch input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+
+.switch .track {
+  position: relative;
+  width: 26px;
+  height: 16px;
+  border: 1px solid var(--rail);
+  background: var(--inset);
+  transition: border-color 0.1s linear;
+}
+
+.switch .track::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 10px;
+  background: var(--ink-faint);
+  transition: transform 0.1s linear, background 0.1s linear;
+}
+
+.switch input:checked + .track {
+  border-color: var(--signal);
+}
+
+.switch input:checked + .track::after {
+  transform: translateX(12px);
+  background: var(--signal);
+}
+
+.switch input:focus-visible + .track {
+  outline: 2px solid var(--signal);
+  outline-offset: 1px;
+}
+
+.switch input:disabled + .track {
+  opacity: 0.4;
+}
+
+/* ── Поля ────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.field-label {
+  display: block;
+}
+
+.field-opt {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.field-input {
+  width: 100%;
+  height: var(--h-ctl);
+  padding: 0 8px;
+  border: 1px solid var(--rail);
+  border-radius: 2px;
+  background: var(--inset);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 0.08s linear;
+}
+
+select.field-input {
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-stretch: var(--ui-stretch);
+  cursor: pointer;
+  padding-right: 4px;
+}
+
+.field-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.field-input:hover:not(:disabled) {
+  border-color: var(--ink-faint);
+}
+
+.field-input:focus {
+  border-color: var(--signal);
+  outline: none;
+}
+
+.field-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field-input[type='number']::-webkit-outer-spin-button,
+.field-input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--signal);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.slug-input {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.slug-prefix {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: var(--h-ctl);
+  padding: 0 7px;
+  border: 1px solid var(--rail);
+  border-right: 0;
+  background: var(--raised);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.section-note {
+  margin: 8px 0 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+
+/* ── Панели ──────────────────────────────────────────── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
+  background: var(--panel);
+  padding: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--rail);
+}
+
+.panel-label,
+.panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-title {
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+.detail-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--rail);
+}
+
+.detail {
+  padding-bottom: 14px;
+}
+
+#detailEmpty {
+  padding: 0 10px;
+}
+
+/* ── Стойка устройств ────────────────────────────────── */
+
+.devices-panel .device-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.device-list.rules-wrap {
+  display: block;
+}
+
+/* Специфичность важна: у списка есть и класс rules-wrap, чьё правило
+   ниже по файлу обнуляло бы боковой отступ пустого состояния. */
+.devices-panel .device-list > .muted {
+  margin: 0;
+  padding: 14px 12px;
+  line-height: 1.45;
+}
+
+.devices-run-row {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rail);
+}
+
+.devices-run-row .btn {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+/* Юнит стойки: заподлицо, отделён линией, без карточки */
+.device-item-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--rail-soft);
+  background: transparent;
+  z-index: 1;
+}
+
+.device-item-wrap:hover,
+.device-item-wrap.active {
+  background: var(--panel-2);
+}
+
+.device-item-wrap.active .device-name {
+  color: var(--ink);
+}
+
+.device-item-wrap.active .device-item {
+  box-shadow: inset 2px 0 0 var(--signal);
+}
+
+.device-handle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.device-item-wrap:hover .device-handle:not(:disabled) {
+  color: var(--ink-faint);
+}
+
+.device-handle:active:not(:disabled) {
+  cursor: grabbing;
+}
+
+.device-handle:disabled {
+  cursor: default;
+}
+
+.device-item {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 30px 8px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.device-item:focus-visible {
+  outline-offset: -2px;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+/* Светодиод юнита: горит — работает */
+.led {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-faint);
+  background: transparent;
+}
+
+.led-on {
+  border-color: var(--live);
+  background: var(--live);
+  box-shadow: 0 0 7px var(--live-wash), 0 0 3px var(--live);
+}
+
+.device-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 500;
+  font-stretch: var(--ui-stretch);
+  color: var(--ink-dim);
+}
+
+.device-item-wrap:hover .device-name {
+  color: var(--ink);
+}
+
+.device-meta {
+  margin-top: 3px;
+  padding-left: 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-item-wrap.active .device-meta {
+  color: var(--ink-dim);
+}
+
+.device-ghost {
+  opacity: 0.3;
+}
+
+.device-chosen {
+  background: var(--panel-2);
+}
+
+.device-drag {
+  opacity: 0;
+}
+
+.device-mirror,
+.rule-mirror {
+  opacity: 0.97 !important;
+  cursor: grabbing !important;
+  pointer-events: none !important;
+  background: var(--raised) !important;
+  box-shadow: var(--shadow) !important;
+  z-index: 1000 !important;
+}
+
+.sortable-fallback {
+  opacity: 0.97;
+}
+
+/* ── Меню юнита ──────────────────────────────────────── */
+
+.device-menu-btn {
+  appearance: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.device-item-wrap:hover .device-menu-btn,
+.device-item-wrap.active .device-menu-btn,
+.device-menu-btn.open,
+.device-menu-btn:focus-visible {
+  opacity: 1;
+}
+
+.device-menu-btn:hover,
+.device-menu-btn.open {
+  color: var(--signal);
+}
+
+.device-ico {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* Уезжает в <body>: список со скроллом и sticky обрезал бы поповер */
+.device-menu-pop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 150px;
+  padding: 3px;
+  border: 1px solid var(--rail);
+  background: var(--raised);
+  box-shadow: var(--shadow);
+  z-index: 200;
+}
+
+.device-menu-pop.open {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-menu-item {
+  appearance: none;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.device-menu-item:hover {
+  background: var(--signal-wash);
+  color: var(--signal);
+}
+
+.device-menu-danger:hover {
+  background: var(--alert-wash);
+  color: var(--alert);
+}
+
+/* ── Секции карточки устройства ──────────────────────── */
+
+.collapse-block {
+  border-bottom: 1px solid var(--rail);
+}
+
+.collapse-head-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  min-height: 36px;
+}
+
+.collapse-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapse-head:hover {
+  color: var(--signal);
+}
+
+.collapse-chevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  width: 9px;
+  color: var(--ink-faint);
+  transition: transform 0.1s linear;
+}
+
+.collapse-block.collapsed .collapse-chevron {
+  transform: rotate(-90deg);
+}
+
+.collapse-count {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.collapse-body {
+  padding: 2px 10px 12px;
+}
+
+.settings-summary {
+  padding: 0 10px 10px 26px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  white-space: pre-wrap;
+}
+
+.collapse-block.collapsed .collapse-body,
+.collapse-block:not(.collapsed) .settings-summary {
+  display: none;
+}
+
+.collapse-block.collapsed .settings-summary {
+  display: block;
+}
+
+.collapse-block.collapsed .collapse-head-row > .btn-add {
+  display: none;
+}
+
+.rules-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-wrap > .muted {
+  padding: 8px 0;
+}
+
+/* Заглушка пустого списка правил и команд. Отступ был инлайновым, пока
+   список пересобирался через innerHTML; теперь узел постоянный. */
+.rules-empty {
+  margin: 0.4rem;
+}
+
+/* ── Правила: сплошные колонки RX/TX через весь список ─ */
+
+.rule-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rail-soft);
+}
+
+.rules-wrap > .rule-card:first-child {
+  border-top: 0;
+}
+
+.rule-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rule-note {
+  flex: 1;
+  min-width: 60px;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-stretch: var(--ui-stretch);
+  padding-left: 4px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.rule-note:hover:not(:disabled),
+.rule-note:focus {
+  background: var(--inset);
+}
+
+.rule-mode {
+  flex: none;
+  width: 118px;
+}
+
+.rule-delay {
+  position: relative;
+  flex: none;
+  width: 74px;
+}
+
+.rule-delay .field-input {
+  padding-right: 22px;
+  text-align: right;
+}
+
+.rule-delay .unit {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.rule-line-io {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+}
+
+/* Метка направления — часть сетки, а не кнопка-«пилюля» */
+.io-tag {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--h-ctl);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.io-tag:hover {
+  color: var(--ink);
+}
+
+.io-tag.active {
+  color: var(--signal);
+}
+
+.rule-tool {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.rule-tool:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.rule-tool-danger:hover:not(:disabled) {
+  color: var(--alert);
+}
+
+.rule-tool:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.rule-ico {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.rule-handle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.rule-card:hover .rule-handle:not(:disabled),
+.command-card:hover .rule-handle:not(:disabled) {
+  color: var(--ink-faint);
+}
+
+.rule-handle:active:not(:disabled) {
+  cursor: grabbing;
+}
+
+/* На запущенном устройстве правила не переставляют — ручка не должна
+   обещать обратное. */
+.rule-handle:disabled {
+  cursor: default;
+}
+
+/* Единственный элемент переставлять не с чем: ручку и её курсор прячем.
+   visibility, а не display — место под ручкой остаётся, и строка не прыгает
+   вбок, когда появится второй элемент. */
+.drag-single .device-handle,
+.drag-single .rule-handle {
+  visibility: hidden;
+}
+
+.rule-ghost {
+  opacity: 0.3;
+}
+
+.rule-chosen {
+  background: var(--panel-2);
+}
+
+.rule-drag {
+  opacity: 0;
+}
+
+/* Поля обмена: одна строка, по клику на RX/TX — пять */
+textarea.field-input {
+  display: block;
+  height: var(--h-ctl);
+  min-height: var(--h-ctl);
+  padding: 5px 8px;
+  line-height: 16px;
+  white-space: pre;
+  overflow: auto hidden;
+  resize: none;
+  scrollbar-width: none;
+}
+
+textarea.field-input:not(.expanded)::-webkit-scrollbar {
+  display: none;
+}
+
+textarea.field-input.expanded {
+  height: 160px;
+  white-space: pre-wrap;
+  overflow: auto;
+  resize: vertical;
+  scrollbar-width: thin;
+  border-color: var(--signal);
+}
+
+textarea.field-input.field-text {
+  height: auto;
+  min-height: 54px;
+  white-space: pre-wrap;
+  overflow: auto;
+  resize: vertical;
+  scrollbar-width: thin;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  border-color: var(--rail);
+}
+
+/* ── Команды ─────────────────────────────────────────── */
+
+.command-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rail-soft);
+}
+
+.rules-wrap > .command-card:first-child {
+  border-top: 0;
+}
+
+.command-note {
+  flex: none;
+  width: 140px;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-stretch: var(--ui-stretch);
+}
+
+.command-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Трасса обмена ───────────────────────────────────── */
+
+.log-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--inset);
+  padding: 6px 0;
+  /* Положение при подгрузке истории сверху держит сам лог (log-view.js).
+     Встроенная привязка браузера сдвинула бы его второй раз. */
+  overflow-anchor: none;
+}
+
+/* «↓ N новых»: появляется, когда отмотал лог назад, а обмен продолжается. */
+.log-panel {
+  position: relative;
+}
+
+.log-new {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  z-index: 2;
+  box-shadow: var(--shadow);
+}
+
+.log {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.log .line {
+  display: grid;
+  grid-template-columns: auto 20px minmax(0, 1fr);
+  gap: 8px;
+  padding: 1px 10px;
+  color: var(--ink-dim);
+}
+
+.log .line:hover {
+  background: var(--panel-2);
+}
+
+.log .line .t {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.log .line .d {
+  text-align: center;
+}
+
+.log .line .v {
+  min-width: 0;
+  /* Переносим по словам; рвём посимвольно только то, что само не влезает
+     в колонку, — например сплошной hex-дамп без пробелов. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.log .rx .d,
+.log .rx .v {
+  color: var(--ink);
+}
+
+.log .tx .d,
+.log .tx .v,
+.log .exchange .d,
+.log .exchange .v {
+  color: var(--signal);
+}
+
+.log .status .v {
+  color: var(--live);
+}
+
+.log .exchange.fail .d,
+.log .exchange.fail .v {
+  color: var(--alert);
+}
+
+.log .raw .v {
+  color: var(--ink-faint);
+}
+
+/* Подсказка «выбери устройство» в пустом логе. */
+.log-empty {
+  margin: 0;
+  padding: 6px 10px;
+}
+
+/* ── Сетка рабочего экрана ───────────────────────────── */
+
+/* Страница проекта не перестраивается под узкое окно: три колонки остаются
+   рядом при любой ширине, поэтому минимум держим на всём теле — иначе шапка
+   обрывалась бы на середине при горизонтальной прокрутке. */
+body:has(.layout) {
+  min-width: var(--layout-min);
+}
+
+/* Ровно высота окна: страница не прокручивается целиком, каждая панель
+   скроллится внутри себя. Иначе разворот поля обмена делал страницу выше
+   окна, появлялась полоса прокрутки — и вся сетка прыгала по ширине. */
+.layout {
+  --col-devices: 250px;
+  --col-log: 440px;
+  display: grid;
+  grid-template-columns: var(--col-devices) 1px minmax(280px, 1fr) 1px var(--col-log);
+  height: calc(100vh - var(--chrome-h));
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.layout.devices-collapsed {
+  grid-template-columns: 40px 1px minmax(280px, 1fr) 1px var(--col-log);
+}
+
+.layout.devices-collapsed #splitDevices {
+  pointer-events: none;
+}
+
+.layout.devices-collapsed .devices-panel .devices-title,
+.layout.devices-collapsed .devices-panel #deviceFilterWrap,
+.layout.devices-collapsed .devices-panel #btnSearchDevices,
+.layout.devices-collapsed .devices-panel #btnAdd,
+.layout.devices-collapsed .devices-panel .devices-run-row,
+.layout.devices-collapsed .devices-panel .device-list,
+.layout.devices-collapsed .devices-panel #deviceList {
+  display: none;
+}
+
+.layout.devices-collapsed .devices-panel .panel-head {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.layout.devices-collapsed #btnToggleDevices {
+  transform: rotate(180deg);
+}
+
+.splitter {
+  position: relative;
+  width: 1px;
+  background: var(--rail);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.splitter::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+}
+
+.splitter:hover,
+.splitter.dragging {
+  background: var(--signal);
+}
+
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing input,
+body.resizing textarea,
+body.resizing select {
+  user-select: text;
+}
+
+.log-panel,
+.devices-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.detail {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  /* место под полосу прокрутки держим всегда, чтобы содержимое
+     не дёргалось, когда поле обмена разворачивается и сворачивается */
+  scrollbar-gutter: stable;
+}
+
+/* Имя устройства и кнопка запуска остаются на виду при прокрутке правил */
+.detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--panel);
+}
+
+.devices-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.device-filter {
+  width: 100%;
+  min-width: 0;
+  padding-right: 24px;
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+
+.filter-clear {
+  appearance: none;
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.filter-clear:hover {
+  color: var(--ink);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Проекты ─────────────────────────────────────────── */
+
+.project-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid var(--rail-soft);
+  cursor: pointer;
+}
+
+.project-card:first-child {
+  border-top: 0;
+}
+
+.project-card:hover .project-name {
+  color: var(--signal);
+}
+
+.project-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-name {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+  letter-spacing: -0.005em;
+}
+
+.project-name:hover {
+  text-decoration: none;
+}
+
+.project-desc {
+  margin-top: 3px;
+  max-width: 62ch;
+  color: var(--ink-dim);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.project-meta {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.project-meta a {
+  color: var(--ink-faint);
+}
+
+.project-meta a:hover {
+  color: var(--signal);
+}
+
+.project-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.stat-on {
+  color: var(--live);
+}
+
+/* Дата изменения — сведение о проекте, а не о работе устройств, поэтому
+   тише остальных чипов и всегда последняя в строке. */
+.stat-date {
+  margin-left: auto;
+  color: var(--ink-faint);
+  cursor: help;
+}
+
+/* «в архиве с …» держится справа рядом с датой изменения, одной группой. */
+.stat-archived {
+  margin-left: auto;
+  cursor: help;
+}
+
+.stat-archived + .stat-date {
+  margin-left: 0;
+}
+
+.stat-on::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 5px var(--live-wash);
+}
+
+.project-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.08s linear;
+}
+
+.project-card:hover .project-card-actions,
+.project-card:focus-within .project-card-actions {
+  opacity: 1;
+}
+
+.project-tool {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.project-tool:hover {
+  color: var(--ink);
+}
+
+.project-tool-danger:hover {
+  color: var(--alert);
+}
+
+.project-ico {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* ── Диалоги ─────────────────────────────────────────── */
+
+dialog {
+  padding: 18px;
+  width: min(430px, 92vw);
+  border: 1px solid var(--rail);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+dialog h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  font-stretch: var(--ui-stretch-title);
+}
+
+dialog::backdrop {
+  background: rgba(10, 9, 8, 0.6);
+}
+
+.pick-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: auto;
+  border-top: 1px solid var(--rail-soft);
+  border-bottom: 1px solid var(--rail-soft);
+}
+
+.pick-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--rail-soft);
+  cursor: pointer;
+}
+
+.pick-item:first-child {
+  border-top: 0;
+}
+
+.pick-item:hover {
+  background: var(--panel-2);
+}
+
+.pick-item input {
+  margin-top: 3px;
+}
+
+.pick-item .name-row {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pick-item .meta {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--rail);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.theme-option:hover {
+  border-color: var(--ink-faint);
+}
+
+.theme-option:has(input:checked) {
+  border-color: var(--signal);
+  background: var(--signal-wash);
+}
+
+.theme-option input {
+  width: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

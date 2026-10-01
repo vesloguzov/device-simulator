@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Проекты — Симулятор TCP/UDP устройств</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('deviceSim.settings') || '{}');
+        // Имена ставим как есть: незнакомое ни одному [data-theme]/[data-font]
+        // правилу само откатится к значению из :root.
+        var r = document.documentElement;
+        r.setAttribute('data-theme', typeof s.theme === 'string' ? s.theme : 'dark');
+        r.setAttribute('data-font', typeof s.font === 'string' ? s.font : 'din-wide');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-font', 'din-wide');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/electron-dialogs.js"></script>
+</head>
+<body>
+  <div class="titlebar">
+    <img class="titlebar-icon" src="/favicon.png" alt="" aria-hidden="true" />
+    <span class="titlebar-text" id="titlebarText">Симулятор TCP/UDP устройств</span>
+  </div>
+
+  <header class="app-header">
+    <div class="app-header-main">
+      <h1>Проекты</h1>
+      <p class="hint">У каждого проекта свой адрес и свой набор устройств</p>
+    </div>
+    <div class="app-actions">
+      <button type="button" class="btn" id="btnExportProjects">Экспорт</button>
+      <button type="button" class="btn" id="btnImportProjects">Импорт</button>
+      <input type="file" id="importProjectsFile" accept="application/json,.json" class="hidden" />
+      <a class="btn" href="/settings">Настройки</a>
+      <button type="button" class="btn btn-primary" id="btnNewProject">Новый проект</button>
+    </div>
+  </header>
+
+  <main class="page page-split">
+    <section class="projects-col">
+      <div class="project-tabs" role="tablist" aria-label="Проекты">
+        <button type="button" class="project-tab" role="tab" data-tab="current" aria-selected="true">
+          Текущие <span class="tab-count" id="countCurrent"></span>
+        </button>
+        <button type="button" class="project-tab" role="tab" data-tab="archive" aria-selected="false">
+          Архив <span class="tab-count" id="countArchive"></span>
+        </button>
+        <span class="filter-wrap project-search">
+          <svg class="project-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" class="field-input device-filter" id="projectFilter"
+                 placeholder="Поиск по имени" autocomplete="off" spellcheck="false"
+                 aria-label="Поиск проекта по имени" />
+          <button type="button" class="filter-clear hidden" id="btnClearProjectFilter" title="Очистить" aria-label="Очистить поиск">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </span>
+      </div>
+      <div id="projectList"></div>
+    </section>
+
+    <aside class="side-panel" aria-labelledby="networkTitle">
+      <h2 class="panel-label" id="networkTitle">Адреса компьютера</h2>
+      <div id="networkList" class="net-list muted">…</div>
+      <p class="section-note" id="networkNote">Нажми на адрес, чтобы скопировать</p>
+    </aside>
+  </main>
+
+  <dialog id="createDialog">
+    <form method="dialog" id="createForm" class="form-stack">
+      <h3>Новый проект</h3>
+      <label class="field">
+        Имя
+        <input class="field-input" name="name" required placeholder="Например: IEN-266" autofocus />
+      </label>
+      <label class="field">
+        <span class="field-label">Описание <span class="field-opt">необязательно</span></span>
+        <textarea class="field-input field-text" name="description" rows="2"
+                  placeholder="Например: переговорная на 3 этаже, матрица и проектор"></textarea>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" name="autoSlug" checked />
+        <span>Адрес назначить автоматически</span>
+      </label>
+      <label class="field hidden" id="slugField">
+        Адрес проекта
+        <span class="slug-input">
+          <span class="slug-prefix">/p/</span>
+          <input class="field-input" name="slug" placeholder="ien-266" autocomplete="off"
+                 spellcheck="false" pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                 title="Латиница, цифры и дефис" />
+        </span>
+        <span class="section-note">Латиница, цифры и дефис</span>
+      </label>
+      <div class="row-gap">
+        <button type="submit" class="btn btn-primary" value="ok">Создать проект</button>
+        <button type="button" class="btn" id="btnCancelCreate">Отмена</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="renameDialog">
+    <form method="dialog" id="renameForm" class="form-stack">
+      <h3>Параметры проекта</h3>
+      <input type="hidden" name="id" />
+      <label class="field">
+        Имя
+        <input class="field-input" name="name" required placeholder="Имя проекта" autofocus />
+      </label>
+      <label class="field">
+        <span class="field-label">Описание <span class="field-opt">необязательно</span></span>
+        <textarea class="field-input field-text" name="description" rows="2"
+                  placeholder="Зачем этот проект и что в нём"></textarea>
+      </label>
+      <p class="section-note" id="renameDates"></p>
+      <div class="row-gap">
+        <button type="submit" class="btn btn-primary" value="ok">Сохранить</button>
+        <button type="button" class="btn" id="btnCancelRename">Отмена</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="pickDialog">
+    <div class="form-stack">
+      <h3 id="pickTitle">Выбор</h3>
+      <p class="muted" id="pickHint" style="margin:0"></p>
+      <div class="row-gap">
+        <button type="button" class="btn" id="btnPickAll">Отметить все</button>
+        <button type="button" class="btn" id="btnPickNone">Снять отметки</button>
+      </div>
+      <div id="pickList" class="pick-list"></div>
+      <div class="row-gap">
+        <button type="button" class="btn btn-primary" id="btnPickOk">Продолжить</button>
+        <button type="button" class="btn" id="btnPickCancel">Отмена</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/js/projects.js"></script>
+</body>
+</html>

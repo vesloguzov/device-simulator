@@ -1,0 +1,59 @@
+{
+  "name": "device-simulator",
+  "version": "1.0.2",
+  "description": "Local TCP/UDP device simulator for iRidi debugging",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "dist:win": "electron-builder --win portable"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "sortablejs": "^1.15.7",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "png-to-ico": "^3.0.2"
+  },
+  "build": {
+    "appId": "local.device.simulator",
+    "productName": "Device Simulator",
+    "compression": "maximum",
+    "afterPack": "build/after-pack.js",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "lib/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "public",
+        "to": "public"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "DeviceSimulator-${version}.exe"
+    }
+  }
+}

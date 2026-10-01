@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Настройки — Симулятор TCP/UDP устройств</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('deviceSim.settings') || '{}');
+        // Имена ставим как есть: незнакомое ни одному [data-theme]/[data-font]
+        // правилу само откатится к значению из :root.
+        var r = document.documentElement;
+        r.setAttribute('data-theme', typeof s.theme === 'string' ? s.theme : 'dark');
+        r.setAttribute('data-font', typeof s.font === 'string' ? s.font : 'din-wide');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-font', 'din-wide');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/electron-dialogs.js"></script>
+</head>
+<body>
+  <div class="titlebar">
+    <img class="titlebar-icon" src="/favicon.png" alt="" aria-hidden="true" />
+    <span class="titlebar-text" id="titlebarText">Симулятор TCP/UDP устройств</span>
+  </div>
+
+  <header class="app-header">
+    <a class="btn btn-icon btn-back" href="/projects" title="Все проекты" aria-label="Все проекты">
+      <svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    </a>
+    <div class="app-header-main">
+      <h1>Настройки</h1>
+      <p class="hint">Действуют во всех проектах на этом компьютере</p>
+    </div>
+  </header>
+
+  <main class="page page-left">
+    <section>
+      <h2 class="panel-label" style="margin-bottom:10px">Тема</h2>
+      <div class="theme-grid" role="radiogroup" aria-label="Тема">
+        <label class="theme-option">
+          <input type="radio" name="theme" value="dark" />
+          <span>Тёмная</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="theme" value="light" />
+          <span>Светлая</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="theme" value="vscode" />
+          <span>VS Code</span>
+        </label>
+      </div>
+      <p class="section-note">VS Code — тёмная схема Dark+: нейтральный серый и её акцентный синий.</p>
+    </section>
+
+    <section>
+      <h2 class="panel-label" style="margin-bottom:10px">Шрифт интерфейса</h2>
+      <div class="theme-grid" role="radiogroup" aria-label="Шрифт интерфейса">
+        <label class="theme-option">
+          <input type="radio" name="font" value="din-wide" />
+          <span>DIN, обычный</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="font" value="din" />
+          <span>DIN, сжатый</span>
+        </label>
+        <label class="theme-option">
+          <input type="radio" name="font" value="segoe" />
+          <span>Segoe UI</span>
+        </label>
+      </div>
+      <p class="section-note">Segoe UI — тот же шрифт, которым набран интерфейс VS Code на Windows. Данные (порты, hex, лог) всегда остаются моноширинным Consolas.</p>
+    </section>
+
+    <section class="hidden" id="shellSection">
+      <h2 class="panel-label" style="margin-bottom:10px">Окно</h2>
+      <label class="theme-option" style="display:inline-flex">
+        <input type="checkbox" id="chkNativeTitleBar" />
+        <span>Показать штатную шапку Windows</span>
+      </label>
+      <p class="section-note">Без неё заголовок приложения сам работает шапкой окна: за него оно таскается, а кнопки свернуть, развернуть и закрыть встроены справа.</p>
+    </section>
+
+    <section>
+      <h2 class="panel-label" style="margin-bottom:10px">Лог</h2>
+      <label class="theme-option" style="display:inline-flex">
+        <input type="checkbox" id="chkLogMs" />
+        <span>Показывать миллисекунды во времени</span>
+      </label>
+    </section>
+  </main>
+
+  <script type="module" src="/js/settings.js"></script>
+</body>
+</html>
